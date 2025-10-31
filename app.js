@@ -16,6 +16,7 @@ mongoose.connect(MONGO_URI)
   })
   .catch(err => {
     // This will print the actual MongoDB connection error to the logs
+    //update
     console.error('❌ FATAL: MongoDB connection failed with error:', err.message);
     process.exit(1); 
   });

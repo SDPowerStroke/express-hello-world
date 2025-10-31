@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "express": "^5.0.0",
-    "mongodb": "^6.2.0"  <-- Added the official MongoDB driver
+    "mongodb": "^6.2.0"
   }
 }

@@ -1,97 +1,97 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors'); // Essential for connecting from a web page
+const cors = require('cors'); 
 
 const app = express();
 
 // --- 1. Middleware Setup ---
-// Allow the app to parse JSON bodies from incoming requests (like the one from the HTML form)
-app.use(express.json()); 
-
-// Configure CORS: This allows your frontend (even when running locally) to talk to your Render API
+// Enable CORS for cross-origin requests (allows your HTML form to talk to the Render API)
 app.use(cors({
-    origin: '*', // Allows all origins for simplicity in development. You can restrict this later.
+    origin: '*', 
     methods: ['GET', 'POST']
 }));
 
+// Enable parsing of JSON body data from the incoming requests
+app.use(express.json()); 
 
-// --- 2. MongoDB Connection (Uses the MONGO_URI from your Render Environment) ---
+
+// --- 2. MongoDB Connection Setup ---
 const MONGO_URI = process.env.MONGO_URI; 
 const PORT = process.env.PORT || 3000;
 
 if (!MONGO_URI) {
-    console.error("❌ ERROR: MONGO_URI environment variable is not set.");
+    console.error("❌ ERROR: MONGO_URI environment variable is not set. Cannot connect to database.");
     process.exit(1);
 }
 
+// Connect to MongoDB using the URI from the Render environment variable
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connection successful!');
     
-    // Start the Express server only after the database connection is ready
+    // Start the Express server only after a successful database connection
     app.listen(PORT, () => {
       console.log(`🚀 Server listening on port ${PORT}`);
     });
   })
   .catch(err => {
     console.error('❌ FATAL: MongoDB connection failed with error:', err.message);
+    // Crash the app if the database connection fails
     process.exit(1); 
   });
 
 
-// --- 3. Mongoose Schema and Model (Defining the 'User' Data) ---
+// --- 3. Mongoose Schema and Model ---
 
-// Define the structure for a user document
+// Define the data structure for documents in the 'User' collection
 const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true, // Ensures no two users can have the same username
+        unique: true, // Guarantees that two users cannot have the same username
         trim: true
     },
     password: {
         type: String,
         required: true
     }
-    // Note: In a real app, you would hash the password here (e.g., using bcrypt)
 });
 
-// Create the model, and explicitly tell Mongoose to use the 'User' collection (singular, capitalized)
-// This matches your MongoDB setup exactly.
+// Create the model, explicitly targeting the 'User' collection (singular, capitalized)
 const User = mongoose.model('User', userSchema, 'User'); 
 
 
 // --- 4. API Route to Handle Form Submission ---
 
-// This POST endpoint receives the username and password from the HTML form
+// POST route to receive and save new credentials
 app.post('/submit-credentials', async (req, res) => {
     const { username, password } = req.body;
 
-    // Basic validation to make sure both fields are present
+    // Server-side validation
     if (!username || !password) {
-        // 400 Bad Request
         return res.status(400).json({ success: false, message: 'Both username and password are required.' });
     }
 
     try {
-        // Create a new User document using the data
+        // Create and save the new user document
         const newUser = new User({ username, password });
-        
-        // Save the document to the MongoDB 'User' collection
         await newUser.save();
 
-        // 201 Created - Send a success response back to the frontend
+        // Success response
         res.status(201).json({ success: true, message: 'User created successfully!', user: { username: newUser.username } });
 
     } catch (error) {
-        // Handle specific Mongoose errors, like duplicate key (username already exists)
+        // Handle Mongoose Duplicate Key Error (username conflict)
         if (error.code === 11000) {
-            // 409 Conflict
             return res.status(409).json({ success: false, message: 'This username is already taken. Please choose another.' });
         }
         
-        // Handle other saving errors (e.g., validation failure)
         console.error('Database save error:', error);
         res.status(500).json({ success: false, message: 'Internal server error while saving user.' });
     }
+});
+
+// A simple root GET route for testing the server is alive
+app.get('/', (req, res) => {
+    res.send('Proto-Nova API is running. Use the /submit-credentials endpoint to post data.');
 });

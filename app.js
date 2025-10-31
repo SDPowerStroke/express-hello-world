@@ -1,14 +1,21 @@
 const mongoose = require('mongoose');
+// ... other requires ...
 
-// The environment variable name MUST match the KEY you set on Render
 const MONGO_URI = process.env.MONGO_URI; 
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB connection successful!'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    // You might want to exit the app if the connection fails
-    // process.exit(1); 
-  });
+if (!MONGO_URI) {
+    console.error("❌ ERROR: MONGO_URI environment variable is not set.");
+    process.exit(1); // Exit if config is missing
+}
 
-// ... rest of your Express app code
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connection successful!');
+    // *** IMPORTANT: START THE EXPRESS SERVER HERE ***
+    // (e.g., app.listen(port, () => console.log('Server started')));
+  })
+  .catch(err => {
+    // This will print the actual MongoDB connection error to the logs
+    console.error('❌ FATAL: MongoDB connection failed with error:', err.message);
+    process.exit(1); 
+  });

@@ -1,30 +1,29 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
-
+const cors = require('cors'); 
 const app = express();
 
 // --- 1. Middleware Setup ---
-// Enable CORS for cross-origin requests (allows your HTML form to talk to the Render API)
+// Allow cross-origin requests from your HTML form
 app.use(cors({
     origin: '*', 
     methods: ['GET', 'POST']
 }));
-
-// Enable parsing of JSON body data from the incoming requests
 app.use(express.json()); 
 
 
-// --- 2. MongoDB Connection Setup ---
+// --- 2. Configuration and MongoDB Connection ---
+// Render automatically sets the PORT and the MONGO_URI
 const MONGO_URI = process.env.MONGO_URI; 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Use port 10000 which Render detects
 
 if (!MONGO_URI) {
-    console.error("❌ ERROR: MONGO_URI environment variable is not set. Cannot connect to database.");
+    console.error("❌ ERROR: MONGO_URI environment variable is not set.");
     process.exit(1);
 }
 
 // Connect to MongoDB using the URI from the Render environment variable
+// Mongoose handles the MongoDB driver connection in the background
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connection successful!');
@@ -35,8 +34,8 @@ mongoose.connect(MONGO_URI)
     });
   })
   .catch(err => {
+    // This logs the 'bad auth' or 'ENOTFOUND' errors you've been seeing
     console.error('❌ FATAL: MongoDB connection failed with error:', err.message);
-    // Crash the app if the database connection fails
     process.exit(1); 
   });
 
@@ -48,7 +47,7 @@ const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true, // Guarantees that two users cannot have the same username
+        unique: true, // Key constraint: only one user per username
         trim: true
     },
     password: {
@@ -57,7 +56,8 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Create the model, explicitly targeting the 'User' collection (singular, capitalized)
+// Create the model, explicitly targeting the 'User' collection
+// This matches your Atlas setup: Users (DB) -> User (Collection)
 const User = mongoose.model('User', userSchema, 'User'); 
 
 
@@ -67,7 +67,6 @@ const User = mongoose.model('User', userSchema, 'User');
 app.post('/submit-credentials', async (req, res) => {
     const { username, password } = req.body;
 
-    // Server-side validation
     if (!username || !password) {
         return res.status(400).json({ success: false, message: 'Both username and password are required.' });
     }
@@ -77,11 +76,10 @@ app.post('/submit-credentials', async (req, res) => {
         const newUser = new User({ username, password });
         await newUser.save();
 
-        // Success response
         res.status(201).json({ success: true, message: 'User created successfully!', user: { username: newUser.username } });
 
     } catch (error) {
-        // Handle Mongoose Duplicate Key Error (username conflict)
+        // Handle Mongoose Duplicate Key Error (code 11000)
         if (error.code === 11000) {
             return res.status(409).json({ success: false, message: 'This username is already taken. Please choose another.' });
         }
@@ -89,9 +87,4 @@ app.post('/submit-credentials', async (req, res) => {
         console.error('Database save error:', error);
         res.status(500).json({ success: false, message: 'Internal server error while saving user.' });
     }
-});
-
-// A simple root GET route for testing the server is alive
-app.get('/', (req, res) => {
-    res.send('Proto-Nova API is running. Use the /submit-credentials endpoint to post data.');
 });

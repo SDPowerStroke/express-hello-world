@@ -58,7 +58,8 @@ const userSchema = new mongoose.Schema({
 
 // Create the model, and explicitly tell Mongoose to use the 'User' collection (singular, capitalized)
 // This matches your MongoDB setup exactly.
-const User = mongoose.model('User', userSchema, 'user');
+const User = mongoose.model('User', userSchema, 'User'); 
+
 
 // --- 4. API Route to Handle Form Submission ---
 
